@@ -33,7 +33,6 @@ export default function PricePredictor() {
   const [price, setPrice] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [priceRange, setPriceRange] = useState(null);
 
   const predictPrice = async () => {
     // Validate
@@ -54,26 +53,12 @@ export default function PricePredictor() {
       setLoading(true);
       setError(null);
       setPrice(null);
-      setPriceRange(null);
 
       // Call your AI endpoint
       const res = await api.post("/ai/predict-price", form);
       
-      setPrice(res.data.predictedPrice);
-      
-      // If API returns range, set it
-      if (res.data.priceRange) {
-        setPriceRange(res.data.priceRange);
-      } else {
-        // Generate mock range (20% variance)
-        const basePrice = res.data.predictedPrice || 500;
-        setPriceRange({
-          low: Math.round(basePrice * 0.85),
-          high: Math.round(basePrice * 1.15),
-        });
-      }
-      
-      toast.success("Price predicted successfully!");
+      setPrice(Number(res.data.predictedPrice));
+      toast.success("Price estimate calculated.");
     } catch (err) {
       console.log(err);
       setError(err.response?.data?.message || "Prediction failed. Please try again.");
@@ -125,7 +110,7 @@ export default function PricePredictor() {
             AI Fabric Price Predictor
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Get AI-powered price estimates for your textile products
+            Get an indicative estimate from fabric specifications and pricing rules
           </p>
         </div>
 
@@ -139,7 +124,7 @@ export default function PricePredictor() {
             <div className="flex items-center gap-2 mb-4">
               <Zap size={18} className="text-indigo-600" />
               <h2 className="text-lg font-bold text-gray-900">Enter Fabric Details</h2>
-              <span className="text-xs bg-gradient-to-r from-indigo-100 to-violet-100 text-indigo-700 px-2 py-0.5 rounded-full ml-auto">AI Powered</span>
+              <span className="text-xs bg-gradient-to-r from-indigo-100 to-violet-100 text-indigo-700 px-2 py-0.5 rounded-full ml-auto">Rule-based estimate</span>
             </div>
 
             {/* Sample Products */}
@@ -304,8 +289,8 @@ export default function PricePredictor() {
           >
             <div className="flex items-center gap-2 mb-4">
               <IndianRupee size={18} className="text-indigo-600" />
-              <h2 className="text-lg font-bold text-gray-900">Price Prediction</h2>
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full ml-auto">AI Generated</span>
+              <h2 className="text-lg font-bold text-gray-900">Price Estimate</h2>
+              <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full ml-auto">Indicative</span>
             </div>
 
             {loading ? (
@@ -332,20 +317,7 @@ export default function PricePredictor() {
                     ₹{price}
                     <span className="text-lg font-normal text-gray-500 ml-1">/meter</span>
                   </p>
-                  
-                  {/* Price Range */}
-                  {priceRange && (
-                    <div className="mt-4">
-                      <p className="text-xs text-gray-500">Estimated Range</p>
-                      <div className="flex items-center justify-center gap-4 mt-1">
-                        <span className="text-sm font-medium text-gray-600">₹{priceRange.low}</span>
-                        <div className="w-24 h-1.5 bg-gray-200 rounded-full relative">
-                          <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-600 rounded-full" style={{ width: '60%', left: '20%' }} />
-                        </div>
-                        <span className="text-sm font-medium text-gray-600">₹{priceRange.high}</span>
-                      </div>
-                    </div>
-                  )}
+
                 </div>
 
                 {/* Summary of inputs */}
@@ -365,7 +337,7 @@ export default function PricePredictor() {
                 </div>
 
                 <p className="text-xs text-gray-400 mt-4">
-                  This is an AI-generated estimated selling price based on the entered fabric details.
+                  This indicative estimate is calculated from predefined pricing rules. It is not a live market quote or a trained machine-learning prediction.
                 </p>
               </div>
             ) : (
@@ -377,7 +349,7 @@ export default function PricePredictor() {
                   Fill in the fabric details and click <strong>"Predict Price"</strong>
                 </p>
                 <p className="text-xs text-gray-400">
-                  AI will analyze market trends and suggest optimal pricing
+                  Your fabric details will be used to calculate an indicative estimate
                 </p>
               </div>
             )}
@@ -397,8 +369,8 @@ export default function PricePredictor() {
                 <Brain size={20} className="text-indigo-600" />
               </div>
             </div>
-            <h4 className="font-semibold text-sm text-gray-900">AI Powered</h4>
-            <p className="text-xs text-gray-500">Machine learning based predictions</p>
+            <h4 className="font-semibold text-sm text-gray-900">Rule-based estimate</h4>
+            <p className="text-xs text-gray-500">A transparent baseline from entered details</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
             <div className="flex justify-center mb-2">
@@ -407,7 +379,7 @@ export default function PricePredictor() {
               </div>
             </div>
             <h4 className="font-semibold text-sm text-gray-900">Market Analysis</h4>
-            <p className="text-xs text-gray-500">Real-time market demand insights</p>
+            <p className="text-xs text-gray-500">Demand level influences the estimate</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
             <div className="flex justify-center mb-2">
