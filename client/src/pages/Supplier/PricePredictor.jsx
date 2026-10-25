@@ -17,7 +17,6 @@ import {
   Loader2,
   Brain,
   Shield,
-  TrendingDown,
 } from "lucide-react";
 
 export default function PricePredictor() {
@@ -107,7 +106,7 @@ export default function PricePredictor() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Brain size={22} className="text-indigo-600" />
-            AI Fabric Price Predictor
+            Fabric Price Estimator
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Get an indicative estimate from fabric specifications and pricing rules
@@ -337,7 +336,7 @@ export default function PricePredictor() {
                 </div>
 
                 <p className="text-xs text-gray-400 mt-4">
-                  This indicative estimate is calculated from predefined pricing rules. It is not a live market quote or a trained machine-learning prediction.
+                  This indicative estimate uses predefined pricing rules. It is not a live market quote or a trained machine-learning prediction.
                 </p>
               </div>
             ) : (
