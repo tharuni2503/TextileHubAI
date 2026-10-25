@@ -104,21 +104,10 @@ export default function Checkout() {
         totalAmount: calculateTotal(),
       };
 
-      // Place order
+      // The API clears the cart only after the order and stock reservation succeed.
       await api.post("/orders", orderData);
-      
-      // Clear cart - Method 1: Delete all items individually
-      for (const item of cart) {
-        await api.delete(`/cart/${item._id}`);
-      }
-      
-      // OR Method 2: If you have a clear all endpoint
-      // await api.delete("/cart/clear-all");
-      
-      // OR Method 3: Update cart state directly without API call
-      // setCart([]);
-
-      toast.success("Order placed successfully! 🎉");
+      setCart([]);
+      toast.success("Order placed successfully!");
       navigate("/buyer/orders");
     } catch (err) {
       console.log(err);
