@@ -1,153 +1,119 @@
+import mongoose from "mongoose";
 import Product from "../models/Product.js";
 
-// Add Product
+const allowedFields = ["name", "category", "description", "price", "stock", "moq", "colors", "image", "status"];
+
 export const addProduct = async (req, res) => {
   try {
+    if (req.user.role !== "supplier") {
+      return res.status(403).json({ success: false, message: "Only suppliers can add products" });
+    }
+
+    const { name, category, description, price, stock, moq, colors, image, status } = req.body;
+    if (!name?.trim() || !category?.trim() || !description?.trim()) {
+      return res.status(400).json({ success: false, message: "Name, category, and description are required" });
+    }
+    if (!Number.isFinite(Number(price)) || Number(price) <= 0 ||
+        !Number.isInteger(Number(stock)) || Number(stock) < 0 ||
+        (moq !== undefined && (!Number.isInteger(Number(moq)) || Number(moq) < 1))) {
+      return res.status(400).json({ success: false, message: "Enter a valid price, stock, and minimum order quantity" });
+    }
+
     const product = await Product.create({
-      ...req.body,
+      name: name.trim(), category: category.trim(), description: description.trim(),
+      price: Number(price), stock: Number(stock), moq: moq === undefined ? 1 : Number(moq),
+      colors, image, status: stock > 0 ? (status || "Available") : "Out of Stock",
       supplier: req.user._id,
     });
-
-    res.status(201).json({
-      success: true,
-      message: "Product Added Successfully",
-      product,
-    });
+    return res.status(201).json({ success: true, message: "Product added successfully", product });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    if (error.name === "ValidationError") {
+      return res.status(400).json({ success: false, message: "Please check the product details" });
+    }
+    return res.status(500).json({ success: false, message: "Unable to add product" });
   }
 };
 
-// Get All Products
 export const getProducts = async (req, res) => {
   try {
     const { search, category, maxPrice, stock } = req.query;
+    const filter = {};
 
-    let filter = {};
-
-    // Search by name
-    if (search) {
-      filter.name = {
-        $regex: search,
-        $options: "i",
-      };
+    if (search?.trim()) {
+      const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.name = { $regex: escaped, $options: "i" };
     }
-
-    // Category filter
-    if (category && category !== "All") {
-      filter.category = category;
+    if (category && category !== "All") filter.category = category;
+    if (maxPrice !== undefined && maxPrice !== "") {
+      const parsedPrice = Number(maxPrice);
+      if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+        return res.status(400).json({ success: false, message: "Invalid maxPrice filter" });
+      }
+      filter.price = { $lte: parsedPrice };
     }
+    if (stock === "available") filter.stock = { $gt: 0 };
 
-    // Price filter
-    if (maxPrice) {
-      filter.price = {
-        $lte: Number(maxPrice),
-      };
-    }
-
-    // Stock filter
-    if (stock === "available") {
-      filter.stock = {
-        $gt: 0,
-      };
-    }
-
-    const products = await Product.find(filter).populate(
-      "supplier",
-      "name businessName"
-    );
-
-    res.json({
-      success: true,
-      products,
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    const products = await Product.find(filter).populate("supplier", "name businessName");
+    return res.json({ success: true, products });
+  } catch {
+    return res.status(500).json({ success: false, message: "Unable to load products" });
   }
 };
 
-// Get Single Product
-export const getProduct = async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id).populate(
-      "supplier",
-      "name businessName"
-    );
+export const getProduct = async (req, res) => getProductById(req, res);
 
-    res.json({
-      success: true,
-      product,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
 export const getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
-
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: "Invalid product ID" });
     }
-
-    res.json({
-      success: true,
-      product,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    const product = await Product.findById(req.params.id).populate("supplier", "name businessName");
+    if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+    return res.json({ success: true, product });
+  } catch {
+    return res.status(500).json({ success: false, message: "Unable to load product" });
   }
 };
 
 export const updateProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+    if (req.user.role !== "supplier") {
+      return res.status(403).json({ success: false, message: "Only suppliers can update products" });
+    }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: "Invalid product ID" });
+    }
+    const product = await Product.findOne({ _id: req.params.id, supplier: req.user._id });
+    if (!product) return res.status(404).json({ success: false, message: "Product not found or access denied" });
 
-    res.json({
-      success: true,
-      message: "Product Updated",
-      product,
-    });
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) product.set(field, req.body[field]);
+    }
+    if (product.price <= 0 || product.stock < 0 || !Number.isInteger(Number(product.stock)) ||
+        product.moq < 1 || !Number.isInteger(Number(product.moq))) {
+      return res.status(400).json({ success: false, message: "Enter valid price, stock, and minimum order quantity" });
+    }
+    product.status = product.stock > 0 ? (req.body.status || product.status || "Available") : "Out of Stock";
+    await product.save();
+    return res.json({ success: true, message: "Product updated successfully", product });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    if (error.name === "ValidationError") return res.status(400).json({ success: false, message: "Please check the product details" });
+    return res.status(500).json({ success: false, message: "Unable to update product" });
   }
 };
 
 export const deleteProduct = async (req, res) => {
   try {
-    await Product.findByIdAndDelete(req.params.id);
-
-    res.json({
-      success: true,
-      message: "Product Deleted",
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    if (req.user.role !== "supplier") {
+      return res.status(403).json({ success: false, message: "Only suppliers can delete products" });
+    }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: "Invalid product ID" });
+    }
+    const product = await Product.findOneAndDelete({ _id: req.params.id, supplier: req.user._id });
+    if (!product) return res.status(404).json({ success: false, message: "Product not found or access denied" });
+    return res.json({ success: true, message: "Product deleted successfully" });
+  } catch {
+    return res.status(500).json({ success: false, message: "Unable to delete product" });
   }
 };
