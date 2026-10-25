@@ -53,15 +53,15 @@ export default function PricePredictor() {
       setError(null);
       setPrice(null);
 
-      // Call your AI endpoint
+      // Request the rule-based estimate from the API
       const res = await api.post("/ai/predict-price", form);
       
       setPrice(Number(res.data.predictedPrice));
       toast.success("Price estimate calculated.");
     } catch (err) {
       console.log(err);
-      setError(err.response?.data?.message || "Prediction failed. Please try again.");
-      toast.error("Failed to predict price");
+      setError(err.response?.data?.message || "Price estimate failed. Please try again.");
+      toast.error("Failed to estimate price");
     } finally {
       setLoading(false);
     }
@@ -274,7 +274,7 @@ export default function PricePredictor() {
               ) : (
                 <>
                   <Brain size={18} />
-                  Predict Price
+                  Estimate Price
                 </>
               )}
             </button>
@@ -345,7 +345,7 @@ export default function PricePredictor() {
                   <Brain size={32} className="text-indigo-400" />
                 </div>
                 <p className="text-gray-500 text-sm">
-                  Fill in the fabric details and click <strong>"Predict Price"</strong>
+                  Fill in the fabric details and click <strong>"Estimate Price"</strong>
                 </p>
                 <p className="text-xs text-gray-400">
                   Your fabric details will be used to calculate an indicative estimate
